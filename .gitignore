@@ -1,1 +1,4 @@
 node_modules/
+src/environmentConstants.ts
+dist/environmentConstants.js
+dist/environmentConstants.js.map
