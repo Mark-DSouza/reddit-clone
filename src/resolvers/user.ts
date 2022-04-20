@@ -6,6 +6,7 @@ import {
   Mutation,
   InputType,
   ObjectType,
+  Query,
 } from "type-graphql";
 import { MyContext } from "src/types";
 import { User } from "../entities/User";
@@ -40,11 +41,21 @@ class UsernamePasswordInput {
 
 @Resolver()
 export class UserResolver {
+  @Query(() => User, { nullable: true })
+  async me(@Ctx() { em, req }: MyContext) {
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const user = await em.findOne(User, { id: req.session.userId });
+    return user;
+  }
+
   @Mutation(() => UserResponse)
   async register(
     @Arg("options") options: UsernamePasswordInput,
     @Ctx()
-    { em }: MyContext
+    { em, req }: MyContext
   ): Promise<UserResponse> {
     const hashedPassword = await argon2.hash(options.password);
     if (options.username.length <= 2) {
@@ -89,6 +100,12 @@ export class UserResolver {
         };
       }
     }
+
+    // store user id session
+    // this will set a cookie on the user
+    // keep them logged in
+    req.session.userId = user.id;
+
     return { user };
   }
 
@@ -96,7 +113,7 @@ export class UserResolver {
   async login(
     @Arg("options") options: UsernamePasswordInput,
     @Ctx()
-    { em }: MyContext
+    { em, req }: MyContext
   ): Promise<UserResponse> {
     const user = await em.findOne(User, {
       username: options.username,
@@ -123,6 +140,8 @@ export class UserResolver {
         ],
       };
     }
+
+    req.session.userId = user.id;
 
     return {
       user: user,
